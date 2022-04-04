@@ -66,6 +66,10 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ViewHolder> 
             }
         });
 
+        holder.itemView.setOnClickListener(l -> {
+            Toast.makeText(context, "" + photo.getImagePath(), Toast.LENGTH_SHORT).show();
+        });
+
 
     }
 

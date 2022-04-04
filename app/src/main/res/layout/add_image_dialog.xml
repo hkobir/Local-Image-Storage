@@ -14,6 +14,7 @@
         app:srcCompat="@drawable/insert_drive_file" />
 
     <LinearLayout
+        android:id="@+id/picBtn"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/productImageIV"
@@ -22,27 +23,38 @@
         android:orientation="horizontal">
 
         <androidx.appcompat.widget.AppCompatButton
-            android:id="@+id/uploadImageButton"
+            android:id="@+id/uploadCameraButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginRight="15dp"
             android:layout_weight="0.5"
             android:background="@drawable/custom_radius_button"
-            android:text="Upload Image"
+            android:text="Camera"
             android:textAllCaps="false"
             android:textColor="@color/white"
             android:textSize="16sp" />
 
         <androidx.appcompat.widget.AppCompatButton
-            android:id="@+id/submitButton"
+            android:id="@+id/uploadGalleryBtn"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="0.5"
             android:background="@drawable/custom_radius_button"
-            android:text="Submit"
+            android:text="Gallery"
             android:textAllCaps="false"
             android:textColor="@color/white"
             android:textSize="16sp" />
     </LinearLayout>
 
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/submitButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/picBtn"
+        android:layout_marginTop="20dp"
+        android:background="@color/fab_color"
+        android:text="Submit"
+        android:textAllCaps="false"
+        android:textColor="@color/white"
+        android:textSize="16sp" />
 </RelativeLayout>

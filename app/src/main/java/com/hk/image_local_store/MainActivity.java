@@ -3,7 +3,6 @@ package com.hk.image_local_store;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
-import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -12,16 +11,12 @@ import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Point;
-import android.graphics.drawable.Drawable;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
-import android.view.Display;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -32,8 +27,11 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.hk.image_local_store.util.Common;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -42,7 +40,8 @@ public class MainActivity extends AppCompatActivity {
     FloatingActionButton addBtn;
     AlertDialog dialog;
     private ImageView prdImage;
-    int REQUEST_CHECK = 0;
+    int REQUEST_CAMERA = 0;
+    int REQUEST_GALLERY = 1;
     String imageUrl;
     File imgPath;
     private PhotoviewModel photoviewModel;
@@ -73,7 +72,7 @@ public class MainActivity extends AppCompatActivity {
     private void populateData() {
         photoviewModel.getAllPhoto().observe(this, photos -> {
             photoList = photos;
-            imageAdapter = new ImageAdapter(MainActivity.this,photoList);
+            imageAdapter = new ImageAdapter(MainActivity.this, photoList);
             recyclerView.setAdapter(imageAdapter);
 
         });
@@ -87,9 +86,10 @@ public class MainActivity extends AppCompatActivity {
         final View view = LayoutInflater.from(MainActivity.this).
                 inflate(R.layout.add_image_dialog, null);
         prdImage = view.findViewById(R.id.productImageIV);
-        Button uploadBtn = view.findViewById(R.id.uploadImageButton);
+        Button uploadCameraBtn = view.findViewById(R.id.uploadCameraButton);
+        Button uploadGalleryBtn = view.findViewById(R.id.uploadGalleryBtn);
         Button submitBtn = view.findViewById(R.id.submitButton);
-        uploadBtn.setOnClickListener(l -> {
+        uploadCameraBtn.setOnClickListener(l -> {
             Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
             File fp = getFile(MainActivity.this);
             Uri imageUri = FileProvider.getUriForFile(
@@ -97,8 +97,18 @@ public class MainActivity extends AppCompatActivity {
                     "com.hk.image_local_store.provider", //(use your app signature + ".provider" )
                     fp);
             intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
-            startActivityForResult(intent, REQUEST_CHECK);
+            startActivityForResult(intent, REQUEST_CAMERA);
         });
+
+        uploadGalleryBtn.setOnClickListener(l -> {
+            Intent intent = new Intent(
+                    Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+            intent.setType("image/*");
+            startActivityForResult(
+                    intent, REQUEST_GALLERY
+            );
+        });
+
         submitBtn.setOnClickListener(l -> {
             Photo photo = new Photo("demo tittle " + new Random()
                     .nextInt(100) + 1, imageUrl);
@@ -145,18 +155,56 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-
-        if (imgPath.exists()) {
-            try {
-                imageUrl = imgPath.toString();
-                Toast.makeText(this, imageUrl, Toast.LENGTH_SHORT).show();
-                prdImage.setImageBitmap(
-                        Common.decodeSampledBitmap(MainActivity.this, imageUrl));
-            } catch (Exception e) {
-                e.printStackTrace();
+        if (requestCode == REQUEST_CAMERA) {
+            if (imgPath.exists()) {
+                try {
+                    imageUrl = imgPath.toString();
+                    Toast.makeText(this, imageUrl, Toast.LENGTH_SHORT).show();
+                    prdImage.setImageBitmap(
+                            Common.decodeSampledBitmap(MainActivity.this, imageUrl));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            } else {
+                prdImage.setImageResource(R.drawable.insert_drive_file);
             }
-        } else {
-            prdImage.setImageResource(R.drawable.insert_drive_file);
+        } else if (data != null && requestCode == REQUEST_GALLERY) {
+            Uri selectedImage = data.getData();
+            String filePathColumn[] = {MediaStore.Images.Media.DATA};
+            if (selectedImage != null) {
+                Cursor cursor = getApplicationContext().getContentResolver().query(
+                        selectedImage,
+                        filePathColumn, null, null, null
+                );
+                if (cursor != null) {
+                    cursor.moveToFirst();
+                    int columnIndex = cursor.getColumnIndex(filePathColumn[0]);
+                    String sourcePath = cursor.getString(columnIndex);
+
+                    //save image to app directory
+                    File file = getFile(MainActivity.this);
+                    imageUrl = imgPath.toString();
+                    if (!file.exists()) {
+                        try {
+                            file.createNewFile();
+                            FileChannel src = new FileInputStream(sourcePath).getChannel();
+                            FileChannel dst = new FileOutputStream(file).getChannel();
+                            dst.transferFrom(src, 0, src.size());
+                            src.close();
+                            dst.close();
+
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+
+                    Toast.makeText(this, imageUrl, Toast.LENGTH_SHORT).show();
+                    prdImage.setImageBitmap(
+                            Common.decodeSampledBitmap(MainActivity.this, imageUrl));
+                    cursor.close();
+                }
+            }
         }
 
     }
